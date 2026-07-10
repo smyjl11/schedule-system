@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+}
+
+/* 日历网格 */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+/* 日程卡片悬停 */
+.schedule-card {
+  @apply rounded-lg border bg-white p-3 shadow-sm transition-all hover:shadow-md cursor-pointer;
+}
