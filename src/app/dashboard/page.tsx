@@ -26,11 +26,27 @@ export default function DashboardPage() {
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [defaultDate, setDefaultDate] = useState('');
 
+  /** 把 Date 格式化为本地 YYYY-MM-DD（避免 toISOString 的 UTC 偏移） */
+  const toLocalDateStr = (d: Date): string =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
   /** 加载日程数据 */
   const fetchSchedules = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/schedules?range=${viewMode}`);
+      // 计算当前视图锚定日期：周视图取所显示周的周一，月视图取当月 1 号
+      let anchorStr: string;
+      if (viewMode === 'week') {
+        const d = new Date();
+        d.setDate(d.getDate() + weekOffset * 7);
+        const day = d.getDay();
+        const monday = new Date(d);
+        monday.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+        anchorStr = toLocalDateStr(monday);
+      } else {
+        anchorStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-01`;
+      }
+      const res = await fetch(`/api/schedules?range=${viewMode}&date=${anchorStr}`);
       const data = await res.json();
       if (data.success) {
         setSchedules(data.data);
@@ -40,7 +56,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [viewMode]);
+  }, [viewMode, weekOffset, viewYear, viewMonth]);
 
   useEffect(() => {
     fetchSchedules();

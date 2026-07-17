@@ -21,10 +21,18 @@ export async function GET(request: NextRequest) {
   const rangeType = searchParams.get('range') || 'week';
   const targetUserId = searchParams.get('userId');
 
+  // 锚定日期：前端切换到过去/未来周、月时通过 date=YYYY-MM-DD 传入，
+  // 不传则默认使用当前日期。以本地时区解析，避免 toISOString 的 UTC 偏移。
+  const dateParam = searchParams.get('date');
+  const anchor = (() => {
+    const m = dateParam ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateParam) : null;
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return new Date();
+  })();
+
   // 计算日期范围
-  const now = new Date();
-  const start = new Date(now);
-  const end = new Date(now);
+  const start = new Date(anchor);
+  const end = new Date(anchor);
 
   if (rangeType === 'month') {
     start.setDate(1);
@@ -32,10 +40,10 @@ export async function GET(request: NextRequest) {
     end.setMonth(end.getMonth() + 1, 0);
     end.setHours(23, 59, 59, 999);
   } else {
-    // week: 本周一到周日
-    const day = now.getDay();
+    // week: 锚定日期所在周的周一 ~ 周日（默认本周）
+    const day = anchor.getDay();
     const mondayOffset = day === 0 ? -6 : 1 - day;
-    start.setDate(now.getDate() + mondayOffset);
+    start.setDate(anchor.getDate() + mondayOffset);
     start.setHours(0, 0, 0, 0);
     end.setDate(start.getDate() + 6);
     end.setHours(23, 59, 59, 999);

@@ -16,6 +16,8 @@ export function getDb(): DatabaseSync {
     db = new DatabaseSync(dbPath);
     db.exec('PRAGMA journal_mode = WAL');
     db.exec('PRAGMA foreign_keys = ON');
+    // 启动时将 WAL 已提交数据合并回主库，确保主库为最新状态，降低丢失风险
+    db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
   }
   return db;
 }
@@ -34,9 +36,16 @@ export function closeDb(): void {
   }
 }
 
-/** 启动时清理上次崩溃可能残留的 SQLite 临时文件 */
+/**
+ * 启动时清理残留的 SQLite 临时文件。
+ * ⚠️ 仅在主库文件尚不存在（全新初始化）时才删除 WAL/SHM。
+ * 若主库已存在，WAL 中可能仍保存着已提交但尚未 checkpoint 的数据，
+ * 此时删除 WAL 会导致新建记录丢失（这也是重启后台后任务消失的根因）。
+ */
 function cleanupOrphanedDbFiles(): void {
   const dbDir = path.join(process.cwd(), 'db');
+  const mainDbPath = path.join(dbDir, 'schedule.db');
+  if (fs.existsSync(mainDbPath)) return; // 主库存在 → 保留 WAL，避免丢数据
   const residuals = ['schedule.db-shm', 'schedule.db-wal'];
   for (const file of residuals) {
     const filePath = path.join(dbDir, file);
