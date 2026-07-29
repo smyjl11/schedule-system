@@ -23,6 +23,9 @@ db/schedule.db-shm
 *.swp
 *.swo
 
+# TypeScript build cache
+tsconfig.tsbuildinfo
+
 # OS
 .DS_Store
 Thumbs.db
